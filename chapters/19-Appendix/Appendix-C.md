@@ -33,16 +33,14 @@ VirtualFree(ptr, 0, MEM_RELEASE);
 
 ## Linux
 
-On Linux OS, there are two ways of using large pages in an application: Explicit and Transparent Huge Pages.
+On Linux OS, there are two ways of using huge pages in an application: Explicit and Transparent Huge Pages.
 
 ### Explicit hugepages
 
-**[TODO:] describe how to reserve at boot time.**
-
-Explicit huge pages can be reserved at boot time or at run time. 
+Explicit huge pages can be reserved at boot time or at run time. To make a permanent change to force the Linux kernel to allocate 128 huge pages at the boot time, run the following command:
 
 ```bash
-$ sudo sysctl -w vm.nr_hugepages=2048
+$ echo "vm.nr_hugepages = 128" >> /etc/sysctl.conf
 ```
 
 To explicitly allocate a fixed number of huge pages, one can use [libhugetlbfs](https://github.com/libhugetlbfs/libhugetlbfs). The following command preallocates 128 huge pages.
@@ -62,7 +60,7 @@ $ mount -t hugetlbfs                                                      \
     min_size=<value>,nr_inodes=<value> none /mnt/huge
 ```
 
-You should be able to observe the effect in `/proc/meminfo`:
+You should be able to observe the effect in `/proc/meminfo`. Note that it is a system-wide view and not per-process:
 
 ```bash
 $ watch -n1 "cat /proc/meminfo  | grep huge -i"
@@ -103,13 +101,19 @@ madvise(ptr, size, MADV_HUGEPAGE);
 munmap(ptr, size);
 ```
 
-When applications are allocating huge pages via `madvise` and `mmap`, you can observe the effect in `/proc/meminfo` under `AnonHugePages`.
+You can observe the system-wide effect in `/proc/meminfo` under `AnonHugePages`:
 
 ```bash
 $ watch -n1 "cat /proc/meminfo  | grep huge -i" 
 AnonHugePages:     61440 kB     <== 30 transparent huge pages are in use
 HugePages_Total:     128
 HugePages_Free:      128        <== explicit huge pages are not used
+```
+
+Also, developers can observe how their application utilizes EHPs and/or THPs by looking at `smaps` file specific to their process:
+
+```bash
+$ watch -n1 "cat /proc/<PID_OF_PROCESS>/smaps"
 ```
 
 [^25]: MAP_HUGETLB example - [https://github.com/torvalds/linux/blob/master/tools/testing/selftests/vm/map_hugetlb.c](https://github.com/torvalds/linux/blob/master/tools/testing/selftests/vm/map_hugetlb.c).
